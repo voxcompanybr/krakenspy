@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Pagamento confirmado — KrakenSpy</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+<div class="wrap" style="text-align:center;padding-top:60px">
+  <h1>Pagamento confirmado ✓</h1>
+  <p>Seu acesso VIP está liberado neste dispositivo. Abra o painel e todas as conversas estarão desbloqueadas.</p>
+  <a class="btn-primary" id="go" href="/app.html" style="margin-top:22px">Acessar painel VIP</a>
+  <p class="hint" style="color:#94a3b8;margin-top:24px">Se o acesso não liberar, guarde o comprovante e fale com o suporte.</p>
+</div>
+<script src="/js/config.js"></script>
+<script src="/js/common.js"></script>
+<script>
+  KSU.setVip();
+  localStorage.removeItem('ks_deadline');
+  if (window.fbq) window.fbq('track', 'Purchase', { value: 37.90, currency: 'BRL' });
+  if (!KSU.getProfile()) document.getElementById('go').href = '/';
+</script>
+</body>
+</html>

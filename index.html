@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>KrakenSpy — Descubra a verdade</title>
+<meta name="description" content="Veja o que a pessoa faz no Instagram: painel com conversas, áudios e fotos, montado a partir do perfil público. 100% anônimo, sem senha, teste grátis.">
+<meta name="theme-color" content="#eef4fb">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='48' font-size='46'%3E%F0%9F%90%99%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="/css/styles.css">
+</head>
+<body class="landing-mode">
+<canvas id="rain" aria-hidden="true"></canvas>
+
+<main class="hero">
+  <section class="card">
+    <div class="brand">
+      <svg class="ghost" viewBox="0 0 64 64" aria-hidden="true">
+        <path d="M32 4C19.8 4 10 13.8 10 26v30c0 2.4 2.7 3.8 4.6 2.4l5-3.6c1.3-.9 3-.9 4.3 0l4.3 3.1c1.2.9 2.9.9 4.1 0l4.3-3.1c1.3-.9 3-.9 4.3 0l4.3 3.1c1.2.9 2.9.9 4.1 0l4.3-3.1c1.3-.9 3-.9 4.3 0l5 3.6c1.9 1.4 4.6 0 4.6-2.4V26C54 13.8 44.2 4 32 4Z"/>
+        <ellipse cx="24" cy="27" rx="4" ry="5.4" fill="#fff"/><ellipse cx="40" cy="27" rx="4" ry="5.4" fill="#fff"/>
+        <circle cx="24.6" cy="28" r="2.2" fill="#0a6ef5"/><circle cx="39.4" cy="28" r="2.2" fill="#0a6ef5"/>
+      </svg>
+      <span class="word">KRAKEN<b>SPY</b></span>
+    </div>
+    <h1>O que seu <span class="hl">Cônjuge</span> faz quando está no Instagram?</h1>
+    <p class="sub">Descubra a verdade sobre <span class="hl u">qualquer pessoa</span>, acessando o instagram dela!</p>
+    <button class="btn-primary" id="startBtn">
+      <svg viewBox="0 0 24 24"><path d="M12 5c-5 0-9 4.5-9 7s4 7 9 7 9-4.5 9-7-4-7-9-7Zm0 11a4 4 0 1 1 0-8 4 4 0 0 1 0 8Z"/><circle cx="12" cy="12" r="2"/></svg>
+      Analisar Agora
+    </button>
+    <ul class="perks">
+      <li><svg viewBox="0 0 24 24"><path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5l-8-3Z"/></svg>100% Anônimo</li>
+      <li><svg viewBox="0 0 24 24"><path d="M7 10V7a5 5 0 0 1 10 0v3h1a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h1Zm2 0h6V7a3 3 0 0 0-6 0v3Z"/></svg>Sem Senha</li>
+      <li><svg viewBox="0 0 24 24"><path d="m5 13 4 4L19 7"/></svg>Teste Grátis</li>
+    </ul>
+    <p class="note">Como funciona: lemos os dados públicos do perfil e montamos um painel de visualização. As conversas exibidas são uma reconstrução ilustrativa — não são as mensagens reais da conta.</p>
+  </section>
+  <nav class="legal">
+    <a href="/privacidade.html">Política de Privacidade</a><span>•</span><a href="/termos.html">Termos de Uso</a>
+  </nav>
+  <p class="counter">+<b id="count">88.825</b> perfis analisados hoje (<span id="weekday">hoje</span>)</p>
+</main>
+
+<div class="modal" id="ageModal">
+  <div class="sheet">
+    <h2 class="m-title">Você tem 18 anos ou mais?</h2>
+    <p class="m-text">Confirme sua idade para continuar.</p>
+    <div class="row">
+      <button class="btn-ghost" id="ageNo">Não, menos de 18</button>
+      <button class="btn-primary" id="ageYes" style="border-radius:14px;height:52px;font-size:15px">Sim, 18+</button>
+    </div>
+    <p class="hint">Ao continuar você aceita os <a href="/termos.html">Termos de Uso</a>.</p>
+  </div>
+</div>
+
+<div class="modal" id="userModal">
+  <div class="sheet">
+    <h2 class="m-title">Digite o <span class="hl">@</span> do Instagram</h2>
+    <p class="m-text">Informe o usuário exato do perfil que deseja analisar.</p>
+    <form id="userForm" autocomplete="off">
+      <div class="field"><span>@</span><input id="userInput" placeholder="usuario" spellcheck="false" maxlength="30"></div>
+      <button class="btn-primary" id="userSubmit" type="submit">Continuar</button>
+    </form>
+    <p class="hint">Limite de apenas 1 pesquisa por dispositivo.</p>
+  </div>
+</div>
+
+<div class="modal" id="confirmModal">
+  <div class="sheet">
+    <h2 class="m-title">Confirme o Instagram</h2>
+    <p class="m-text">Você deseja analisar o perfil <b id="cUser">@</b>?</p>
+    <div class="preview">
+      <img id="cAvatar" alt="">
+      <div class="pstats">
+        <div><b id="cPosts">0</b><small>posts</small></div>
+        <div><b id="cFollowers">0</b><small>seguidores</small></div>
+        <div><b id="cFollowing">0</b><small>seguindo</small></div>
+      </div>
+    </div>
+    <p class="warn"><svg viewBox="0 0 24 24"><path d="M12 2 1 21h22L12 2Zm1 15h-2v-2h2v2Zm0-4h-2V8h2v5Z"/></svg>Limite de apenas 1 pesquisa por dispositivo, certifique-se que digitou o usuário corretamente.</p>
+    <div class="row"><button class="btn-ghost" id="fixBtn">Corrigir @</button><button class="btn-primary" id="confirmBtn">Confirmar ›</button></div>
+  </div>
+</div>
+
+<div class="hack" id="hack" aria-live="polite">
+  <div class="term">
+    <div class="term-head"><i></i><i></i><i></i><span>krakenspy://session</span></div>
+    <pre id="log"></pre>
+    <div class="bar"><div id="barFill"></div></div>
+    <p class="term-foot" id="termFoot">Aguarde, não feche esta tela…</p>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="/js/config.js"></script>
+<script src="/js/common.js"></script>
+<script src="/js/landing.js"></script>
+</body>
+</html>

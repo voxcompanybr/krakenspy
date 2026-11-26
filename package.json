@@ -1,0 +1,13 @@
+{
+  "name": "krakenspy",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Funil de visualizacao de perfil estilo Instagram",
+  "scripts": {
+    "dev": "netlify dev",
+    "deploy": "netlify deploy --prod"
+  },
+  "devDependencies": {
+    "netlify-cli": "^17.0.0"
+  }
+}
