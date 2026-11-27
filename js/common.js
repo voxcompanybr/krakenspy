@@ -53,11 +53,11 @@ window.KSU = (function () {
       .catch(function () { return null; })
       .then(function (p) {
         var out;
-        if (p && p.username && (p.followers || p.avatar)) {
+        if (p && p.username && (p.avatar || p.posts || p.followers !== undefined)) {
           out = generate(u);
           out._synthetic = false;
           if (p.avatar) out.avatar = p.avatar;
-          if (p.followers) out.followers = p.followers;
+          if (p.followers !== undefined && p.followers !== null) out.followers = p.followers;
           if (p.posts) out.posts = p.posts;
           if (p.photos && p.photos.length) out.photos = p.photos;
           if (p.full_name) out.full_name = p.full_name;
@@ -72,9 +72,16 @@ window.KSU = (function () {
 
   function img(url) {
     if (!url) return '';
-    if (/cdninstagram\.com|fbcdn\.net/.test(url)) return '/api/ig?img=' + encodeURIComponent(url);
     return url;
   }
+
+  document.addEventListener('error', function (e) {
+    var el = e.target;
+    if (el && el.tagName === 'IMG' && el.dataset.px !== '1' && /cdninstagram|fbcdn/.test(el.src)) {
+      el.dataset.px = '1';
+      el.src = '/api/ig?img=' + encodeURIComponent(el.src);
+    }
+  }, true);
 
   function captureUtms() {
     var q = new URLSearchParams(location.search), keep = {};
