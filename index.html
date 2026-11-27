@@ -36,7 +36,7 @@
     <p class="note">Como funciona: lemos os dados públicos do perfil e montamos um painel de visualização. As conversas exibidas são uma reconstrução ilustrativa — não são as mensagens reais da conta.</p>
   </section>
   <nav class="legal">
-    <a href="/privacidade.html">Política de Privacidade</a><span>•</span><a href="/termos.html">Termos de Uso</a>
+    <a href="/privacidade.html">Política de Privacidade</a><span>•</span><a href="/termos.html">Termos de Uso</a><span>•</span><a href="/?reset=1">Recomeçar</a>
   </nav>
   <p class="counter">+<b id="count">88.825</b> perfis analisados hoje (<span id="weekday">hoje</span>)</p>
 </main>
@@ -61,7 +61,8 @@
       <div class="field"><span>@</span><input id="userInput" placeholder="usuario" spellcheck="false" maxlength="30"></div>
       <button class="btn-primary" id="userSubmit" type="submit">Continuar</button>
     </form>
-    <p class="hint">Limite de apenas 1 pesquisa por dispositivo.</p>
+    <button class="btn-ghost" id="openLast" hidden style="width:100%;margin-top:10px"></button>
+    <p class="hint" id="searchHint">Limite de apenas 1 pesquisa por dispositivo.</p>
   </div>
 </div>
 
@@ -77,7 +78,7 @@
         <div><b id="cFollowing">0</b><small>seguindo</small></div>
       </div>
     </div>
-    <p class="warn"><svg viewBox="0 0 24 24"><path d="M12 2 1 21h22L12 2Zm1 15h-2v-2h2v2Zm0-4h-2V8h2v5Z"/></svg>Limite de apenas 1 pesquisa por dispositivo, certifique-se que digitou o usuário corretamente.</p>
+    <p class="warn"><svg viewBox="0 0 24 24"><path d="M12 2 1 21h22L12 2Zm1 15h-2v-2h2v2Zm0-4h-2V8h2v5Z"/></svg>Confira se o @ está correto antes de confirmar. Cada análise consome uma pesquisa.</p>
     <div class="row"><button class="btn-ghost" id="fixBtn">Corrigir @</button><button class="btn-primary" id="confirmBtn">Confirmar ›</button></div>
   </div>
 </div>
