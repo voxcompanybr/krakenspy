@@ -2,6 +2,11 @@
   'use strict';
   var $ = KSU.$, profile = null;
 
+  if (new URLSearchParams(location.search).has('reset')) {
+    ['ks_used','ks_vip','ks_deadline','ks_profile','ks_age'].forEach(function (k) { localStorage.removeItem(k); });
+    Object.keys(localStorage).forEach(function (k) { if (k.indexOf('ks_cache_') === 0) localStorage.removeItem(k); });
+  }
+
   KSU.captureUtms();
   if (window.fbq) window.fbq('track', 'PageView');
 
@@ -60,7 +65,7 @@
       $('cAvatar').src = KSU.img(p.avatar);
       $('cPosts').textContent = p.posts;
       $('cFollowers').textContent = p.followers;
-      $('cFollowing').textContent = p.following;
+      $('cFollowing').textContent = p.following || '—';
       $('confirmModal').classList.add('open');
     }).catch(function () {
       KSU.toast('Não encontramos esse perfil. Confira o @.');
