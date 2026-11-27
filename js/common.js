@@ -1,11 +1,15 @@
 window.KSU = (function () {
   function $(id) { return document.getElementById(id); }
-  function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+  function todo(s) { return String(s == null ? '' : s).replace(/^TODO:\s*/i, '').trim(); }
+
   function toast(m) {
     var t = $('toast'); if (!t) return;
     t.textContent = m; t.classList.add('show');
-    setTimeout(function () { t.classList.remove('show'); }, 2400);
+    clearTimeout(t._h);
+    t._h = setTimeout(function () { t.classList.remove('show'); }, 2400);
   }
+
   function hash(s) { var h = 0; for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h; }
   function rnd(seed, min, max) { return min + (seed % (max - min + 1)); }
   function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase(); }
@@ -24,6 +28,8 @@ window.KSU = (function () {
 
   function generate(u) {
     var h = hash(u), c = CITIES[h % CITIES.length], f = FRASES[(h >> 6) % FRASES.length], r = h % 100;
+    var photos = [];
+    for (var i = 0; i < 6; i++) photos.push('https://picsum.photos/seed/' + encodeURIComponent(u) + i + '/600/800');
     return {
       username: u,
       full_name: nameFromHandle(u),
@@ -32,7 +38,7 @@ window.KSU = (function () {
       followers: (r < 45 ? rnd(h, 130, 900) : (r < 86 ? rnd(h, 900, 4200) : rnd(h, 4200, 24000))),
       following: rnd(h >> 4, 160, 1500),
       bio: ['📍 ' + c + ' ✦ ' + f, '📍 ' + c, f + ' ✨', '✦ ' + c + ' | ' + f, f + ' | ' + c][(h >> 9) % 5],
-      photos: [],
+      photos: photos,
       _synthetic: true
     };
   }
@@ -40,47 +46,69 @@ window.KSU = (function () {
   function norm(u) { return String(u || '').replace(/^@/, '').trim().toLowerCase().replace(/\s/g, ''); }
   function valid(u) { return /^[a-z0-9._]{2,30}$/.test(u); }
 
+  /* o CDN do Instagram não aceita hotlink: passa tudo pelo proxy */
+  function img(url) {
+    if (!url) return '';
+    if (/^https:\/\/(?:[a-z0-9-]+\.)*(?:cdninstagram\.com|fbcdn\.net)\//i.test(url)) {
+      return '/api/ig?img=' + encodeURIComponent(url);
+    }
+    return url;
+  }
+
+  function fetchProfile(u) {
+    return fetch('/api/ig?username=' + encodeURIComponent(u), { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .catch(function () { return null; });
+  }
+
+  function merge(u, p) {
+    var out = generate(u);
+    out._synthetic = false;
+    out.source = p.source || 'instagram';
+    if (p.avatar) out.avatar = p.avatar;
+    if (typeof p.followers === 'number') out.followers = p.followers;
+    if (typeof p.following === 'number') out.following = p.following;
+    if (typeof p.posts === 'number') out.posts = p.posts;
+    if (p.photos && p.photos.length) out.photos = p.photos;
+    if (p.full_name) out.full_name = p.full_name;
+    if (p.bio) out.bio = p.bio;
+    if (p.verified) out.verified = true;
+    if (p.is_private) out.is_private = true;
+    return out;
+  }
+
   function lookup(raw) {
     var u = norm(raw);
     if (!valid(u)) return Promise.reject(new Error('invalid'));
 
     var cached = null;
     try { cached = JSON.parse(localStorage.getItem('ks_cache_' + u) || 'null'); } catch (e) {}
-    if (cached && cached.t > Date.now() - 864e5) return Promise.resolve(cached.p);
+    if (cached && cached.p && !cached.p._synthetic && cached.t > Date.now() - 864e5) {
+      return Promise.resolve(cached.p);
+    }
 
-    return fetch('/api/ig?username=' + encodeURIComponent(u), { cache: 'no-store' })
-      .then(function (r) { return r.ok ? r.json() : null; })
-      .catch(function () { return null; })
-      .then(function (p) {
-        var out;
-        if (p && p.username && (p.avatar || p.posts || p.followers !== undefined)) {
-          out = generate(u);
-          out._synthetic = false;
-          if (p.avatar) out.avatar = p.avatar;
-          if (p.followers !== undefined && p.followers !== null) out.followers = p.followers;
-          if (p.posts) out.posts = p.posts;
-          if (p.photos && p.photos.length) out.photos = p.photos;
-          if (p.full_name) out.full_name = p.full_name;
-          if (p.bio) out.bio = p.bio;
-        } else {
-          out = generate(u);
-        }
+    return fetchProfile(u).then(function (p) {
+      if (p && p.username) return p;
+      return fetchProfile(u); /* 2ª tentativa antes de cair no sintético */
+    }).then(function (p) {
+      var out;
+      if (p && p.username && (p.avatar || p.posts || typeof p.followers === 'number')) {
+        out = merge(u, p);
         try { localStorage.setItem('ks_cache_' + u, JSON.stringify({ t: Date.now(), p: out })); } catch (e) {}
-        return out;
-      });
+      } else {
+        out = generate(u); /* sintético NÃO é cacheado */
+      }
+      return out;
+    });
   }
 
-  function img(url) {
-    if (!url) return '';
-    return url;
-  }
-
+  /* retry de imagem via proxy, uma vez por elemento */
   document.addEventListener('error', function (e) {
     var el = e.target;
-    if (el && el.tagName === 'IMG' && el.dataset.px !== '1' && /cdninstagram|fbcdn/.test(el.src)) {
-      el.dataset.px = '1';
-      el.src = '/api/ig?img=' + encodeURIComponent(el.src);
-    }
+    if (!el || el.tagName !== 'IMG' || el.dataset.px === '1') return;
+    if (!/^https:\/\/[^/]*(cdninstagram|fbcdn)\./i.test(el.src)) return;
+    el.dataset.px = '1';
+    el.src = '/api/ig?img=' + encodeURIComponent(el.src);
   }, true);
 
   function captureUtms() {
@@ -106,8 +134,15 @@ window.KSU = (function () {
   function isVip() { return localStorage.getItem('ks_vip') === '1'; }
   function setVip() { localStorage.setItem('ks_vip', '1'); }
 
-  return { $: $, esc: esc, toast: toast, hash: hash, rnd: rnd, generate: generate,
-           norm: norm, valid: valid, lookup: lookup, img: img,
-           captureUtms: captureUtms, utmString: utmString, track: track,
-           getProfile: getProfile, setProfile: setProfile, isVip: isVip, setVip: setVip };
+  function reset() {
+    ['ks_used','ks_vip','ks_deadline','ks_profile','ks_age'].forEach(function (k) { localStorage.removeItem(k); });
+    Object.keys(localStorage).forEach(function (k) { if (k.indexOf('ks_cache_') === 0) localStorage.removeItem(k); });
+  }
+
+  return {
+    $: $, esc: esc, toast: toast, todo: todo, hash: hash, rnd: rnd, generate: generate,
+    norm: norm, valid: valid, lookup: lookup, img: img,
+    captureUtms: captureUtms, utmString: utmString, track: track,
+    getProfile: getProfile, setProfile: setProfile, isVip: isVip, setVip: setVip, reset: reset
+  };
 })();
