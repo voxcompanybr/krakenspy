@@ -2,13 +2,13 @@
   'use strict';
   var $ = KSU.$, profile = null;
 
-  if (new URLSearchParams(location.search).has('reset')) {
-    ['ks_used','ks_vip','ks_deadline','ks_profile','ks_age'].forEach(function (k) { localStorage.removeItem(k); });
-    Object.keys(localStorage).forEach(function (k) { if (k.indexOf('ks_cache_') === 0) localStorage.removeItem(k); });
-  }
+  if (new URLSearchParams(location.search).has('reset')) KSU.reset();
 
   KSU.captureUtms();
   if (window.fbq) window.fbq('track', 'PageView');
+
+  var hint = $('searchHint');
+  if (hint && !KS.searchPerDevice) hint.textContent = 'Digite o @ exato, sem espaços.';
 
   var days = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
   $('weekday').textContent = days[new Date().getDay()];
@@ -36,41 +36,54 @@
   $('ageYes').onclick = function () { localStorage.setItem('ks_age', '1'); $('ageModal').classList.remove('open'); };
   $('ageNo').onclick = function () { location.href = 'https://www.google.com'; };
 
-  $('startBtn').onclick = function () {
-    if (localStorage.getItem('ks_age') !== '1') { $('ageModal').classList.add('open'); return; }
-    if (KS.searchPerDevice && localStorage.getItem('ks_used') === '1' && KSU.getProfile()) {
-      KSU.toast('Você já usou sua pesquisa grátis. Abrindo seu painel…');
-      setTimeout(function () { location.href = '/app.html'; }, 1200);
-      return;
+  function openUser() {
+    var prev = KSU.getProfile(), last = $('openLast');
+    if (last) {
+      if (prev && prev.username && localStorage.getItem('ks_used') === '1') {
+        last.hidden = false;
+        last.textContent = 'Abrir meu último painel (@' + prev.username + ')';
+        last.onclick = function () { location.href = '/app.html'; };
+      } else {
+        last.hidden = true;
+      }
     }
     $('userModal').classList.add('open');
     setTimeout(function () { $('userInput').focus(); }, 120);
+  }
+
+  $('startBtn').onclick = function () {
+    if (localStorage.getItem('ks_age') !== '1') { $('ageModal').classList.add('open'); return; }
+    openUser();
   };
   $('userModal').onclick = function (e) { if (e.target.id === 'userModal') $('userModal').classList.remove('open'); };
   $('fixBtn').onclick = function () {
     $('confirmModal').classList.remove('open');
-    $('userModal').classList.add('open');
+    openUser();
     setTimeout(function () { $('userInput').select(); }, 120);
   };
 
+  var busy = false;
   $('userForm').onsubmit = function (e) {
     e.preventDefault();
+    if (busy) return;
     var btn = $('userSubmit'), val = $('userInput').value.trim();
     if (!KSU.valid(KSU.norm(val))) return KSU.toast('Digite um @ válido');
-    btn.disabled = true; btn.textContent = 'Buscando…';
+
+    busy = true; btn.disabled = true; btn.textContent = 'Buscando…';
+
     KSU.lookup(val).then(function (p) {
       profile = p;
       $('userModal').classList.remove('open');
       $('cUser').textContent = '@' + p.username;
       $('cAvatar').src = KSU.img(p.avatar);
-      $('cPosts').textContent = p.posts;
-      $('cFollowers').textContent = p.followers;
-      $('cFollowing').textContent = p._synthetic ? p.following : '—';
+      $('cPosts').textContent = p.posts || 0;
+      $('cFollowers').textContent = p.followers || 0;
+      $('cFollowing').textContent = p.following || 0;
       $('confirmModal').classList.add('open');
     }).catch(function () {
       KSU.toast('Não encontramos esse perfil. Confira o @.');
     }).then(function () {
-      btn.disabled = false; btn.textContent = 'Continuar';
+      busy = false; btn.disabled = false; btn.textContent = 'Continuar';
     });
   };
 
@@ -84,12 +97,16 @@
     ['Preparando o painel de visualização…', 700]
   ];
 
+  var started = false;
   $('confirmBtn').onclick = function () {
+    if (started || !profile) return;
+    started = true;
     $('confirmModal').classList.remove('open');
     $('hack').classList.add('on');
     KSU.setProfile(profile);
     localStorage.setItem('ks_used', '1');
     KSU.track('Lead', { content_name: '@' + profile.username });
+
     var log = $('log'), fill = $('barFill'), i = 0;
     (function step() {
       if (i >= STEPS.length) {
