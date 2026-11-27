@@ -1,4 +1,4 @@
-const VERSION = 'ig-3-embed';
+const VERSION = 'ig-4-tagstrip';
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 const CACHE = new Map();
 const TTL = 1e3 * 60 * 30;
@@ -17,13 +17,14 @@ function num(s) {
 }
 
 function clean(u) { return String(u || '').replace(/\\u0026/g, '&').replace(/s150x150/g, 's320x320'); }
+function strip(html) { return String(html || '').replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' '); }
 
 function parse(raw, name) {
   const html = String(raw || '');
-  if (/Log into Instagram/i.test(html) && !/followers/i.test(html)) return null;
+  const txt = strip(html);
 
-  const fol = html.match(/([\d.,]+[KMB]?)\s*followers/i);
-  const pos = html.match(/([\d.,]+[KMB]?)\s*posts/i);
+  const fol = txt.match(/([\d.,]+[KMB]?)\s*followers/i);
+  const pos = txt.match(/([\d.,]+[KMB]?)\s*posts/i);
   if (!fol && !pos) return null;
 
   let avatar = '';
@@ -62,7 +63,7 @@ async function get(url, headers, ms) {
     if (!r.ok) return { status: r.status, text: '' };
     return { status: r.status, text: await r.text() };
   } catch (e) {
-    return { status: 0, text: '', err: String(e && e.message || e) };
+    return { status: 0, text: '', err: String((e && e.message) || e) };
   } finally {
     clearTimeout(t);
   }
@@ -72,10 +73,9 @@ async function attempt(name) {
   const embed = 'https://www.instagram.com/' + encodeURIComponent(name) + '/embed/';
   const enc = encodeURIComponent(embed);
   const list = [
-    ['direto', embed, { 'user-agent': UA, 'accept-language': 'pt-BR,pt;q=0.9' }, 9000],
-    ['allorigins', 'https://api.allorigins.win/raw?url=' + enc, null, 9000],
-    ['codetabs', 'https://api.codetabs.com/v1/proxy?quest=' + enc, null, 9000],
-    ['jina-html', 'https://r.jina.ai/' + embed, { 'accept': 'text/plain', 'x-return-format': 'html' }, 15000]
+    ['jina', 'https://r.jina.ai/' + embed, { 'accept': 'text/plain' }, 15000],
+    ['direto', embed + '?cr=1', { 'user-agent': UA, 'accept-language': 'pt-BR,pt;q=0.9' }, 9000],
+    ['codetabs', 'https://api.codetabs.com/v1/proxy?quest=' + enc, null, 12000]
   ];
   const log = [];
   for (const [via, url, headers, ms] of list) {
