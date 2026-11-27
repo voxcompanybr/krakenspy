@@ -1,3 +1,4 @@
+const VERSION = 'ig-3-embed';
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 const CACHE = new Map();
 const TTL = 1e3 * 60 * 30;
@@ -15,27 +16,35 @@ function num(s) {
   return Math.round(+m[1] * mult);
 }
 
-function upscale(url) {
-  return String(url || '').replace(/s150x150/g, 's320x320').replace(/\/s\d+x\d+\//, '/s320x320/');
-}
+function clean(u) { return String(u || '').replace(/\\u0026/g, '&').replace(/s150x150/g, 's320x320'); }
 
-function parse(html, name) {
-  const av = html.match(/<img[^>]+src="(https:\/\/[^"]*cdninstagram[^"]*)"/i);
+function parse(raw, name) {
+  const html = String(raw || '');
+  if (/Log into Instagram/i.test(html) && !/followers/i.test(html)) return null;
+
   const fol = html.match(/([\d.,]+[KMB]?)\s*followers/i);
   const pos = html.match(/([\d.,]+[KMB]?)\s*posts/i);
   if (!fol && !pos) return null;
 
+  let avatar = '';
+  const avHtml = html.match(/<img[^>]+src="(https:\/\/[^"]*cdninstagram[^"]*)"/i);
+  if (avHtml) avatar = clean(avHtml[1]);
+  if (!avatar) {
+    const avMd = html.match(/!\[[^\]]*profile picture[^\]]*\]\((https:\/\/[^)]*cdninstagram[^)]*)\)/i);
+    if (avMd) avatar = clean(avMd[1]);
+  }
+
   const photos = [];
-  const re = /"(https:\/\/[^"]*cdninstagram\.com\/v\/t51\.[^"]*)"/g;
+  const re = /(https:\/\/[^")\s]*cdninstagram\.com\/v\/t51\.[^")\s]*)/g;
   let m;
   while ((m = re.exec(html)) && photos.length < 12) {
-    const u = m[1].replace(/\\u0026/g, '&');
-    if (!photos.includes(u) && !/profile picture/i.test(u)) photos.push(u);
+    const u = clean(m[1]);
+    if (!photos.includes(u) && u !== avatar && !/profile picture/i.test(u)) photos.push(u);
   }
 
   return {
     username: name,
-    avatar: av ? upscale(av[1].replace(/\\u0026/g, '&')) : '',
+    avatar: avatar,
     followers: num(fol && fol[1]),
     posts: num(pos && pos[1]),
     following: 0,
@@ -45,39 +54,37 @@ function parse(html, name) {
   };
 }
 
-async function grab(name) {
-  const target = 'https://www.instagram.com/' + encodeURIComponent(name) + '/embed/';
+async function get(url, headers, ms) {
   const ctl = new AbortController();
-  const t = setTimeout(() => ctl.abort(), 9000);
+  const t = setTimeout(() => ctl.abort(), ms || 8000);
   try {
-    const r = await fetch(target, {
-      headers: { 'user-agent': UA, 'accept-language': 'pt-BR,pt;q=0.9' },
-      signal: ctl.signal,
-      redirect: 'follow'
-    });
-    if (!r.ok) return null;
-    return parse(await r.text(), name);
+    const r = await fetch(url, { headers: headers || { 'user-agent': UA }, signal: ctl.signal, redirect: 'follow' });
+    if (!r.ok) return { status: r.status, text: '' };
+    return { status: r.status, text: await r.text() };
   } catch (e) {
-    return null;
+    return { status: 0, text: '', err: String(e && e.message || e) };
   } finally {
     clearTimeout(t);
   }
 }
 
-async function grabViaJina(name) {
-  const target = 'https://r.jina.ai/https://www.instagram.com/' + encodeURIComponent(name) + '/embed/';
-  const ctl = new AbortController();
-  const t = setTimeout(() => ctl.abort(), 15000);
-  try {
-    const r = await fetch(target, { headers: { 'accept': 'text/plain' }, signal: ctl.signal });
-    if (!r.ok) return null;
-    const txt = await r.text();
-    return parse(txt, name);
-  } catch (e) {
-    return null;
-  } finally {
-    clearTimeout(t);
+async function attempt(name) {
+  const embed = 'https://www.instagram.com/' + encodeURIComponent(name) + '/embed/';
+  const enc = encodeURIComponent(embed);
+  const list = [
+    ['direto', embed, { 'user-agent': UA, 'accept-language': 'pt-BR,pt;q=0.9' }, 9000],
+    ['allorigins', 'https://api.allorigins.win/raw?url=' + enc, null, 9000],
+    ['codetabs', 'https://api.codetabs.com/v1/proxy?quest=' + enc, null, 9000],
+    ['jina-html', 'https://r.jina.ai/' + embed, { 'accept': 'text/plain', 'x-return-format': 'html' }, 15000]
+  ];
+  const log = [];
+  for (const [via, url, headers, ms] of list) {
+    const r = await get(url, headers, ms);
+    const p = r.text ? parse(r.text, name) : null;
+    log.push({ via, status: r.status, len: r.text.length, ok: !!p, err: r.err || undefined });
+    if (p) return { p, via, log };
   }
+  return { p: null, via: null, log };
 }
 
 exports.handler = async (event) => {
@@ -94,11 +101,7 @@ exports.handler = async (event) => {
       const buf = Buffer.from(await r.arrayBuffer());
       return {
         statusCode: r.status,
-        headers: {
-          ...CORS,
-          'content-type': r.headers.get('content-type') || 'image/jpeg',
-          'cache-control': 'public, max-age=86400'
-        },
+        headers: { ...CORS, 'content-type': r.headers.get('content-type') || 'image/jpeg', 'cache-control': 'public, max-age=86400' },
         body: buf.toString('base64'),
         isBase64Encoded: true
       };
@@ -113,22 +116,21 @@ exports.handler = async (event) => {
   }
 
   const hit = CACHE.get(name);
-  if (hit && hit.t > Date.now() - TTL) {
+  if (hit && hit.t > Date.now() - TTL && !q.debug) {
+    return { statusCode: 200, headers: { ...CORS, 'content-type': 'application/json' }, body: JSON.stringify(hit.p) };
+  }
+
+  const out = await attempt(name);
+
+  if (q.debug) {
     return {
       statusCode: 200,
-      headers: { ...CORS, 'content-type': 'application/json', 'cache-control': 'public, max-age=1800' },
-      body: JSON.stringify(hit.p)
+      headers: { ...CORS, 'content-type': 'application/json' },
+      body: JSON.stringify({ version: VERSION, name, via: out.via, found: !!out.p, log: out.log, data: out.p }, null, 2)
     };
   }
 
-  let p = await grab(name);
-  if (!p) p = await grabViaJina(name);
-  if (!p) return { statusCode: 404, headers: CORS, body: JSON.stringify({ error: 'nao_encontrado' }) };
-
-  CACHE.set(name, { t: Date.now(), p });
-  return {
-    statusCode: 200,
-    headers: { ...CORS, 'content-type': 'application/json', 'cache-control': 'public, max-age=1800' },
-    body: JSON.stringify(p)
-  };
+  if (!out.p) return { statusCode: 404, headers: CORS, body: JSON.stringify({ error: 'nao_encontrado' }) };
+  CACHE.set(name, { t: Date.now(), p: out.p });
+  return { statusCode: 200, headers: { ...CORS, 'content-type': 'application/json' }, body: JSON.stringify(out.p) };
 };
