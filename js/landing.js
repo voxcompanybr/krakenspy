@@ -65,7 +65,7 @@
       $('cAvatar').src = KSU.img(p.avatar);
       $('cPosts').textContent = p.posts;
       $('cFollowers').textContent = p.followers;
-      $('cFollowing').textContent = p.following || '—';
+      $('cFollowing').textContent = p._synthetic ? p.following : '—';
       $('confirmModal').classList.add('open');
     }).catch(function () {
       KSU.toast('Não encontramos esse perfil. Confira o @.');
