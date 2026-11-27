@@ -91,7 +91,7 @@
   }
   function photoSrc(i) {
     var ph = (profile && profile.photos) || [];
-    if (ph.length) return KSU.img(ph[i % ph.length]);
+    if (ph.length) return ph[i % ph.length];
     return 'https://picsum.photos/seed/' + encodeURIComponent((profile && profile.username) || 'ks') + i + '/600/800';
   }
 
