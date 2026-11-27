@@ -32,6 +32,7 @@ window.KSU = (function () {
       followers: (r < 45 ? rnd(h, 130, 900) : (r < 86 ? rnd(h, 900, 4200) : rnd(h, 4200, 24000))),
       following: rnd(h >> 4, 160, 1500),
       bio: ['📍 ' + c + ' ✦ ' + f, '📍 ' + c, f + ' ✨', '✦ ' + c + ' | ' + f, f + ' | ' + c][(h >> 9) % 5],
+      photos: [],
       _synthetic: true
     };
   }
@@ -51,7 +52,19 @@ window.KSU = (function () {
       .then(function (r) { return r.ok ? r.json() : null; })
       .catch(function () { return null; })
       .then(function (p) {
-        var out = (p && p.username) ? p : generate(u);
+        var out;
+        if (p && p.username && (p.followers || p.avatar)) {
+          out = generate(u);
+          out._synthetic = false;
+          if (p.avatar) out.avatar = p.avatar;
+          if (p.followers) out.followers = p.followers;
+          if (p.posts) out.posts = p.posts;
+          if (p.photos && p.photos.length) out.photos = p.photos;
+          if (p.full_name) out.full_name = p.full_name;
+          if (p.bio) out.bio = p.bio;
+        } else {
+          out = generate(u);
+        }
         try { localStorage.setItem('ks_cache_' + u, JSON.stringify({ t: Date.now(), p: out })); } catch (e) {}
         return out;
       });
