@@ -19,7 +19,8 @@
 <script>
   KSU.setVip();
   localStorage.removeItem('ks_deadline');
-  if (window.fbq) window.fbq('track', 'Purchase', { value: 37.90, currency: 'BRL' });
+  var v = Number((new URLSearchParams(location.search).get('price') || '37.90').replace(',', '.'));
+  if (window.fbq) window.fbq('track', 'Purchase', { value: v, currency: 'BRL' });
   if (!KSU.getProfile()) document.getElementById('go').href = '/';
 </script>
 </body>
